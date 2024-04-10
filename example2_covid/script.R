@@ -30,7 +30,7 @@ fit_once <- function(alpha, data){
   data$x2 <- ifelse(data$x > a_fit, (data$x - a_fit), 0) ; data$xx2 <- cos(data$x2*2*pi); data$xxx2 <- sin(data$x1*2*pi)
   
   mod <- model_fit(formula = deaths ~ xx1 + xx2 + xxx1 + xxx2 +
-                     f(x1, model = "IWP", order = 2, sd.prior = list(param = 1, h = 1)) + f(x2, model = "IWP", order = 2, sd.prior = list(param = 1, h = 1)),
+                     f(x1, model = "IWP", order = 2, sd.prior = list(param = 1, h = 1), initial_location = "left") + f(x2, model = "IWP", order = 2, sd.prior = list(param = 1, h = 1), initial_location = "left"),
                    data = data, method = "aghq", family = "Poisson", aghq_k = 3
   )
   mod
@@ -48,6 +48,7 @@ eval_num <- 20
 rel_runtime <- c()
 BO_result_list <- list()
 BO_result_original_list <- list()
+output_dir <- "figures/"
 for (i in 1:length(eval_num)) {
   eval_number <- eval_num[i]
   begin_time <- Sys.time()
@@ -83,18 +84,46 @@ for (i in 1:length(eval_num)) {
   rel_runtime[i] <- as.numeric((end_time - begin_time), units = "mins")/1.961008
 }
 for (i in 1:length(eval_num)) {
+  base_name <- paste0("NL_change_point: B = ", eval_num[i])
+  tex_file_name <- paste0(output_dir, base_name, ".tex")
+  pdf_file_name <- paste0(output_dir, base_name, ".pdf")
   BO_result_list[[i]]$year <- as.Date((BO_result_list[[i]]$x + ref_val)*365.25)
+  tikzDevice::tikz(tex_file_name, width = 5, height = 5, standAlone = TRUE)
   ggplot() +
     # geom_histogram(aes(x = mcmc_samps_selected, y = ..density..), bins = 100, alpha = 0.5, fill = "blue") +
     geom_line(data = BO_result_list[[i]], aes(x = year, y = pos), color = "red", size = 1) +
     # geom_line(data = exact_grid_result_smooth, aes(x = x, y = pos), color = "black", size = 1, linetype = "dashed") +
-    ggtitle(paste0("Change-point in NL: B = ", eval_num[i])) +
-    xlab("Value") +
+    # ggtitle(paste0("Change-point in NL: B = ", eval_num[i])) +
+    xlab("") +
     ylab("Density") +
-    xlim(as.Date(c("2019-12-01", "2021-01-01"))) +
-    theme_minimal()
+    scale_x_date(
+      limits = as.Date(c("2019-12-01", "2021-01-01")),
+      date_labels = "%b %y", 
+      date_breaks = "3 month"
+    ) +
+    theme_minimal() +
+    theme(text = element_text(size = 15), axis.text = element_text(size = 15))  # only change the lab and axis text size
     # lims(y = range(exact_grid_result_smooth$pos))
-  ggsave(filename = (paste0("figures/NL_change_point: B = ", eval_num[i], " .pdf")))
+  dev.off()
+  # Run pdflatex to generate the PDF
+  if (file.exists(tex_file_name)) {
+    system(sprintf('pdflatex -output-directory=%s "%s"', output_dir, tex_file_name))
+    
+    # Check if the PDF was created
+    if (file.exists(pdf_file_name)) {
+      # Delete the .tex, .aux, and .log files to clean up
+      file.remove(tex_file_name)
+      file.remove(paste0(output_dir, base_name, ".aux"))
+      file.remove(paste0(output_dir, base_name, ".log"))
+      file.remove(paste0(output_dir, base_name, ".tex"))
+    } else {
+      warning("PDF file was not created: ", pdf_file_name)
+    }
+  } else {
+    warning("TeX file was not created: ", tex_file_name)
+  }
+  
+  # ggsave(filename = (paste0("figures/NL_change_point: B = ", eval_num[i], " .pdf")))
 }
 ### Which day is most likely: "2020-02-06"
 as.Date((BO_result_list[[i]]$x[which.max(BO_result_list[[i]]$pos)] + ref_val)*365.25)
@@ -127,13 +156,29 @@ post_sum$x <- post_result$x
 post_sum$year <- as.Date((post_sum$x + ref_val)*365.25)
 pdf(file = "figures/NL_fit.pdf", height = 5, width = 5)
 matplot(x = post_sum$year, y = exp(post_sum[,1:3]),
-        col = c(1,1,1), lty = c(1,2,2), type = "l", 
+        col = c(1,2,2), lty = c(1,2,2), type = "l", 
         xlim = as.Date(c("2015-01-01", "2023-01-01")),
-        xlab = "year", ylab = "All-Cause Death",
-        main = "NL")
-points(NL_death$deaths ~ NL_death$date, col = "red", cex = 0.2)
+        xlab = "", ylab = "Weekly Death",
+        main = "", cex.lab = 1.5, cex.axis = 1.5)
+points(NL_death$deaths ~ NL_death$date, col = "black", cex = 0.2)
 abline(v = as.Date("2020-02-06"), col = "purple")
 dev.off()
+
+tikzDevice::tikz("figures/NL_curve.tex", width = 5, height = 5, standAlone = TRUE)
+matplot(x = post_sum$year, y = exp(post_sum[,1:3]),
+        col = c(1,2,2), lty = c(1,2,2), type = "l", 
+        xlim = as.Date(c("2015-01-01", "2023-01-01")),
+        xlab = "", ylab = "Weekly Death",
+        main = "", cex.lab = 1.5, cex.axis = 1.5, lwd = 2)
+points(NL_death$deaths ~ NL_death$date, col = "black", cex = 0.2)
+abline(v = as.Date("2020-02-06"), col = "purple")
+dev.off()
+system("pdflatex -output-directory=./figures ./figures/NL_curve.tex")
+file.remove("./figures/NL_curve.tex")
+file.remove("./figures/NL_curve.aux")
+file.remove("./figures/NL_curve.log")
+
+
 
 ### East EU: BG
 BG_death <- world_death %>% filter(country_name == "Bulgaria")
@@ -191,17 +236,42 @@ for (i in 1:length(eval_num)) {
 }
 for (i in 1:length(eval_num)) {
   BO_result_list[[i]]$year <- as.Date((BO_result_list[[i]]$x + ref_val)*365.25)
+  tikzDevice::tikz(paste0("figures/BG_change_point: B = ", eval_num[i], ".tex"), width = 5, height = 5, standAlone = TRUE)
   ggplot() +
     # geom_histogram(aes(x = mcmc_samps_selected, y = ..density..), bins = 100, alpha = 0.5, fill = "blue") +
     geom_line(data = BO_result_list[[i]], aes(x = year, y = pos), color = "red", size = 1) +
     # geom_line(data = exact_grid_result_smooth, aes(x = x, y = pos), color = "black", size = 1, linetype = "dashed") +
-    ggtitle(paste0("Change-point in BG: B = ", eval_num[i])) +
-    xlab("Value") +
+    # ggtitle(paste0("Change-point in BG: B = ", eval_num[i])) +
+    xlab("") +
     ylab("Density") +
-    xlim(as.Date(c("2019-12-01", "2021-01-01"))) +
-    theme_minimal()
+    # xlim(as.Date(c("2019-12-01", "2021-01-01"))) +
+    scale_x_date(
+      limits = as.Date(c("2019-12-01", "2021-01-01")),
+      date_labels = "%b %y", 
+      date_breaks = "3 month"
+    ) +
+    theme_minimal() +
+    theme(text = element_text(size = 15), axis.text = element_text(size = 15))  # only change the lab and axis text size
   # lims(y = range(exact_grid_result_smooth$pos))
-  ggsave(filename = (paste0("figures/BG_change_point: B = ", eval_num[i], " .pdf")))
+  dev.off()
+  # Run pdflatex to generate the PDF
+  if (file.exists(paste0("figures/BG_change_point: B = ", eval_num[i], ".tex"))) {
+    system(sprintf('pdflatex -output-directory=figures "figures/BG_change_point: B = %s.tex"', eval_num[i]))
+    
+    # Check if the PDF was created
+    if (file.exists(paste0("figures/BG_change_point: B = ", eval_num[i], ".pdf"))) {
+      # Delete the .tex, .aux, and .log files to clean up
+      file.remove(paste0("figures/BG_change_point: B = ", eval_num[i], ".tex"))
+      file.remove(paste0("figures/BG_change_point: B = ", eval_num[i], ".aux"))
+      file.remove(paste0("figures/BG_change_point: B = ", eval_num[i], ".log"))
+    } else {
+      warning("PDF file was not created: ", paste0("figures/BG_change_point: B = ", eval_num[i], ".pdf"))
+    }
+  } else {
+    warning("TeX file was not created: ", paste0("figures/BG_change_point: B = ", eval_num[i], ".tex"))
+  }
+  
+  # ggsave(filename = (paste0("figures/BG_change_point: B = ", eval_num[i], " .pdf")))
 }
 ### Which day is most likely: "2020-08-28"
 as.Date((BO_result_list[[i]]$x[which.max(BO_result_list[[i]]$pos)] + ref_val)*365.25)
@@ -241,4 +311,18 @@ matplot(x = post_sum$year, y = exp(post_sum[,1:3]),
 points(BG_death$deaths ~ BG_death$date, col = "red", cex = 0.2)
 abline(v = as.Date("2020-08-28"), col = "purple")
 dev.off()
+
+tikzDevice::tikz("figures/BG_curve.tex", width = 5, height = 5, standAlone = TRUE)
+matplot(x = post_sum$year, y = exp(post_sum[,1:3]),
+        col = c(1,2,2), lty = c(1,2,2), type = "l", 
+        xlim = as.Date(c("2015-01-01", "2023-01-01")),
+        xlab = "", ylab = "Weekly Death",
+        main = "", cex.lab = 1.5, cex.axis = 1.5, lwd = 2)
+points(BG_death$deaths ~ BG_death$date, col = "black", cex = 0.2)
+abline(v = as.Date("2020-08-28"), col = "purple")
+dev.off()
+system("pdflatex -output-directory=./figures ./figures/BG_curve.tex")
+file.remove("./figures/BG_curve.tex")
+file.remove("./figures/BG_curve.aux")
+file.remove("./figures/BG_curve.log")
 

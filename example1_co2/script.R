@@ -87,11 +87,17 @@ post_y <- data.frame(y = y, pos = exp(fn_vals - lognormal_const))
 post_x <- data.frame(x = pnorm(post_y$y) * (upper - lower) + lower, post = (post_y$pos / dnorm(post_y$y))/(upper - lower) )
 
 ### Plot the posterior of alpha:
+tikzDevice::tikz(file = paste0("co2_pi_alpha.tex"), width = 5, height = 5, standAlone = TRUE)
 plot(post_x$post ~ post_x$x, type = "l", ylab = "Post", 
-     xlab = expression(alpha) ) #, cex.lab = 2.0, cex.axis = 2.0)
+     xlab = '$\\alpha$' , cex.lab = 1.5, cex.axis = 1.5)
 for(x_val in data_to_smooth$x_original) {
   segments(x_val, -0.02, x_val, -0.05, col = "red")
 }
+dev.off()
+system(paste0("pdflatex ", "co2_pi_alpha.tex"))
+file.remove(paste0("co2_pi_alpha.aux"))
+file.remove(paste0("co2_pi_alpha.log"))
+file.remove(paste0("co2_pi_alpha.tex"))
 
 ### Compute the HPD:
 post_x$x <- round(post_x$x, digits = 2)
@@ -134,6 +140,7 @@ fit_once <- function(a){
                         family = "Gaussian", aghq_k = 3)
   mod_once
 }
+set.seed(123)
 for (i in 1:length(nodes_converted)){
   mod <- fit_once(nodes_converted[i]) 
   save(mod, file = paste0("models/", "model", "_", i,".rda"))
@@ -165,24 +172,48 @@ t_all_samples <- t1_samples + t2_samples + t3_samples
 t_all_samples[,1] <- t1_samples[,1]
 t_all_summary <- extract_mean_interval_given_samps(t_all_samples)
 t_all_summary$time <- (t_all_summary$x * 365.25) + timeOrigin
-plot(t_all_summary$q0.5 ~ t_all_summary$time, type = "l", lty = "solid", ylab = "CO2", xlab = "year")
+
+## Plot the results to pdf
+tikzDevice::tikz(file = paste0("co2_overall.tex"), width = 5, height = 5, standAlone = TRUE)
+plot(t_all_summary$q0.5 ~ t_all_summary$time, type = "l", 
+     lty = "solid", ylab = "CO2", xlab = "year", cex.lab = 1.5, cex.axis = 1.5)
 lines(t_all_summary$q0.975 ~ t_all_summary$time, col = "red", lty = "dashed")
 lines(t_all_summary$q0.025 ~ t_all_summary$time, col = "red", lty = "dashed")
+dev.off()
+system(paste0("pdflatex ", "co2_overall.tex"))
+file.remove(paste0("co2_overall.aux"))
+file.remove(paste0("co2_overall.log"))
+file.remove(paste0("co2_overall.tex"))
 
 t1_summary$time <- (t1_summary$x * 365.25) + timeOrigin
-plot(t1_summary$q0.5 ~ t1_summary$time, type = "l", lty = "solid", ylab = "CO2", xlab = "year")
+
+tikzDevice::tikz(file = paste0("co2_trend.tex"), width = 5, height = 5, standAlone = TRUE)
+plot(t1_summary$q0.5 ~ t1_summary$time, type = "l", lty = "solid", ylab = "CO2", 
+     xlab = "year", cex.lab = 1.5, cex.axis = 1.5)
 lines(t1_summary$q0.975 ~ t1_summary$time, col = "red", lty = "dashed")
 lines(t1_summary$q0.025 ~ t1_summary$time, col = "red", lty = "dashed")
+dev.off()
+system(paste0("pdflatex ", "co2_trend.tex"))
+file.remove(paste0("co2_trend.aux"))
+file.remove(paste0("co2_trend.log"))
+file.remove(paste0("co2_trend.tex"))
 
 
 ts_samples <- t2_samples + t3_samples
 ts_samples[,1] <- t2_samples[,1]
 ts_summary <- extract_mean_interval_given_samps(ts_samples)
 ts_summary$time <- (ts_summary$x * 365.25) + timeOrigin
+
+tikzDevice::tikz(file = paste0("co2_seasonal.tex"), width = 5, height = 5, standAlone = TRUE)
 plot(ts_summary$q0.5 ~ ts_summary$time, type = "l", lty = "solid", ylab = "CO2", xlab = "year",
-     xlim = as.Date(c("1985-01-01","2000-01-01")), ylim = c(725, 740))
+     xlim = as.Date(c("1985-01-01","2000-01-01")), ylim = c(725, 740), cex.lab = 1.5, cex.axis = 1.5)
 lines(ts_summary$q0.975 ~ ts_summary$time, col = "red", lty = "dashed")
 lines(ts_summary$q0.025 ~ ts_summary$time, col = "red", lty = "dashed")
+dev.off()
+system(paste0("pdflatex ", "co2_seasonal.tex"))
+file.remove(paste0("co2_seasonal.aux"))
+file.remove(paste0("co2_seasonal.log"))
+file.remove(paste0("co2_seasonal.tex"))
 
 
 

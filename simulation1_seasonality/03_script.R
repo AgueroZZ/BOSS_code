@@ -49,7 +49,7 @@ BO_result_list <- list()
 BO_result_original_list <- list()
 
 load(file = "exact_grid_result.rda")
-
+set.seed(123)
 for (i in 1:length(eval_num)) {
   n_grid <- nrow(exact_grid_result)
   eval_number <- eval_num[i]
@@ -83,23 +83,30 @@ for (i in 1:length(eval_num)) {
   BO_result_list[[i]] <- data.frame(x = (lower + x_vals*(upper - lower)), pos = post_x$pos /(upper - lower))
 }
 save(BO_result_list, file = "BO_result_list.rda")
-
+save(rel_runtime, file = "rel_runtime.rda")
 #### Plot the Rel-Runtime:
-png(filename = "figures/runtime_compare.png", height = 800, width = 800)
+#png(filename = "figures/runtime_compare.png", height = 800, width = 800)
+# Use tikzDevice to generate the tex file
+tikzDevice::tikz(file = paste0("./figures/runtime_compare.tex"),
+                 width = 8, height = 8, standAlone = TRUE)
 plot(rel_runtime ~ eval_num, type = "o", ylab = "rel-runtime", xlab = "eval number: B", cex.lab = 2.0, cex.axis = 2.0)
 dev.off()
+system("pdflatex -output-directory=./figures ./figures/runtime_compare.tex")
+file.remove("./figures/runtime_compare.tex")
+file.remove("./figures/runtime_compare.aux")
+file.remove("./figures/runtime_compare.log")
 
 #### Comparison:
 load(file = "exact_grid_result.rda")
 load(file = "exact_grid_result_smooth.rda")
-# load(file = "mcmc_samps.rda")
-# burnin <- 1000
-# thinning <- 3
-# mcmc_samps_selected <- mcmc_samps[-c(1:burnin)][seq(1, length(mcmc_samps[-c(1:burnin)]), by=thinning)]
-
+output_dir <- "figures/"
 for (i in 1:length(eval_num)) {
+  base_name <- paste0("ComparisonPosteriorDensity_B_", eval_num[i])
+  tex_file_name <- paste0("figures/ComparisonPosteriorDensity_B_", eval_num[i], ".tex")
+  pdf_file_name <- paste0("figures/ComparisonPosteriorDensity_B_", eval_num[i], ".pdf")
+  tikzDevice::tikz(file = paste0("./figures/ComparisonPosteriorDensity_B_", eval_num[i], ".tex"),
+                   width = 8, height = 8, standAlone = TRUE)
   ggplot() +
-    # geom_histogram(aes(x = mcmc_samps_selected, y = ..density..), bins = 100, alpha = 0.5, fill = "blue") +
     geom_line(data = BO_result_list[[i]], aes(x = x, y = pos), color = "red", size = 1) +
     geom_line(data = exact_grid_result_smooth, aes(x = x, y = pos), color = "black", size = 1, linetype = "dashed") + 
     ggtitle(paste0("Comparison Posterior Density: B = ", eval_num[i])) +
@@ -107,10 +114,29 @@ for (i in 1:length(eval_num)) {
     ylab("Density") +
     theme_minimal() +
     theme(text = element_text(size = 20), axis.text = element_text(size = 25)) + # only change the lab and axis text size
-    # lims(y = c(0,15))
     lims(y = range(exact_grid_result_smooth$pos))
-  ggsave(filename = (paste0("figures/Comparison Posterior Density: B = ", eval_num[i], " .pdf")),
-         width = 8, height = 8)
+  dev.off()
+  
+  # Run pdflatex to generate the PDF
+  if (file.exists(tex_file_name)) {
+    system(sprintf('pdflatex -output-directory=%s "%s"', output_dir, tex_file_name))
+    
+    # Check if the PDF was created
+    if (file.exists(pdf_file_name)) {
+      # Delete the .tex, .aux, and .log files to clean up
+      file.remove(tex_file_name)
+      file.remove(paste0(output_dir, base_name, ".aux"))
+      file.remove(paste0(output_dir, base_name, ".log"))
+    } else {
+      warning("PDF file was not created: ", pdf_file_name)
+    }
+  } else {
+    warning("TeX file was not created: ", tex_file_name)
+  }
+  
+  # ggsave(filename = (paste0("figures/Comparison Posterior Density: B = ", eval_num[i], " .pdf")),
+  #        width = 8, height = 8)
+  
 }
 
 
@@ -133,9 +159,16 @@ KL_vec <- c()
 for (i in 1:length(eval_num)) {
   KL_vec[i] <- Compute_KL(x = exact_grid_result_smooth$x, px = exact_grid_result_smooth$pos, qx = BO_result_list[[i]]$pos)
 }
-png(filename = "figures/kl_compare.png", height = 800, width = 800)
+# png(filename = "figures/kl_compare.png", height = 800, width = 800)
+
+tikzDevice::tikz(file = paste0("./figures/kl_compare.tex"),
+                 width = 8, height = 8, standAlone = TRUE)
 plot((KL_vec) ~ eval_num, type = "o", ylab = "KL", xlab = "eval number: B", cex.lab = 2.0, cex.axis = 2.0)
 dev.off()
+system("pdflatex -output-directory=./figures ./figures/kl_compare.tex")
+file.remove("./figures/kl_compare.tex")
+file.remove("./figures/kl_compare.aux")
+file.remove("./figures/kl_compare.log")
 
 Compute_KL(x = exact_grid_result_smooth$x, px = exact_grid_result_smooth$pos, qx = BO_result_list[[i]]$pos)
 
@@ -149,6 +182,14 @@ KS_vec <- c()
 for (i in 1:length(eval_num)) {
   KS_vec[i] <- Compute_KS(x = exact_grid_result_smooth$x, px = exact_grid_result_smooth$pos, qx = BO_result_list[[i]]$pos)
 }
-png(filename = "figures/ks_compare.png", height = 800, width = 800)
+# png(filename = "figures/ks_compare.png", height = 800, width = 800)
+# Use tikzDevice to generate the tex file
+tikzDevice::tikz(file = paste0("./figures/ks_compare.tex"),
+                 width = 8, height = 8, standAlone = TRUE)
 plot((KS_vec) ~ eval_num, type = "o", ylab = "KS", xlab = "eval number: B", cex.lab = 2.0, cex.axis = 2.0)
 dev.off()
+system("pdflatex -output-directory=./figures ./figures/ks_compare.tex")
+file.remove("./figures/ks_compare.tex")
+file.remove("./figures/ks_compare.aux")
+file.remove("./figures/ks_compare.log")
+

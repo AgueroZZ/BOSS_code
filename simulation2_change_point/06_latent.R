@@ -118,7 +118,6 @@ exact_samples_color <- rgb(1, 0, 0, alpha = 0.2) # Red with transparency
 BO_samples_color <- rgb(0, 0, 1, alpha = 0.2) # Blue with transparency
 mar.default <- c(5,4,4,2)
 par(mar = mar.default + c(0, 1, 0, 0))
-
 png(filename = "figures/compare_g1.png", height = 500, width = 500)
 plot(q0.5~x, data = exact_samples_g1_sum, type = "l", col = "red", ylab = "", lty = "dashed", cex.lab = 2.0, cex.axis = 2.0)
 polygon(c(exact_samples_g1_sum$x, rev(exact_samples_g1_sum$x)),
@@ -130,6 +129,26 @@ polygon(c(BO_samples_g1_sum$x, rev(BO_samples_g1_sum$x)),
         col = BO_samples_color, border = NA)
 lines(q0.5~x, data = BO_samples_g1_sum, col = "blue", lty = "dashed")
 dev.off()
+
+# pdf output through tikzDevice
+tikzDevice::tikz(file = paste0("figures/compare_g1.tex"), 
+                 width = 5, height = 5, standAlone = TRUE)
+plot(q0.5~x, data = exact_samples_g1_sum, type = "l", col = "red", ylab = "", lty = "dashed", cex.lab = 2.0, cex.axis = 2.0)
+polygon(c(exact_samples_g1_sum$x, rev(exact_samples_g1_sum$x)),
+        c(exact_samples_g1_sum$q0.025, rev(exact_samples_g1_sum$q0.975)),
+        col = exact_samples_color, border = NA)
+lines(g1(x)~x, exact_samples_g1_sum, col = "black")
+polygon(c(BO_samples_g1_sum$x, rev(BO_samples_g1_sum$x)),
+        c(BO_samples_g1_sum$q0.025, rev(BO_samples_g1_sum$q0.975)),
+        col = BO_samples_color, border = NA)
+lines(q0.5~x, data = BO_samples_g1_sum, col = "blue", lty = "dashed")
+dev.off()
+system("pdflatex -output-directory=./figures ./figures/compare_g1.tex")
+file.remove("./figures/compare_g1.tex")
+file.remove("./figures/compare_g1.aux")
+file.remove("./figures/compare_g1.log")
+
+
 
 png(filename = "figures/compare_g2.png", height = 500, width = 500)
 plot(q0.5~x, data = exact_samples_g2_sum, type = "l", col = "red", ylab = "", lty = "dashed", cex.lab = 2.0, cex.axis = 2.0)
@@ -143,4 +162,20 @@ polygon(c(BO_samples_g2_sum$x, rev(BO_samples_g2_sum$x)),
 lines(q0.5~x, data = BO_samples_g2_sum, col = "blue", lty = "dashed")
 dev.off()
 
+tikzDevice::tikz(file = paste0("figures/compare_g2.tex"), 
+                 width = 5, height = 5, standAlone = TRUE)
+plot(q0.5~x, data = exact_samples_g2_sum, type = "l", col = "red", ylab = "", lty = "dashed", cex.lab = 2.0, cex.axis = 2.0)
+polygon(c(exact_samples_g2_sum$x, rev(exact_samples_g2_sum$x)),
+        c(exact_samples_g2_sum$q0.025, rev(exact_samples_g2_sum$q0.975)),
+        col = exact_samples_color, border = NA)
+lines(I(g2(x)-g2(0))~x, exact_samples_g1_sum, col = "black")
+polygon(c(BO_samples_g2_sum$x, rev(BO_samples_g2_sum$x)),
+        c(BO_samples_g2_sum$q0.025, rev(BO_samples_g2_sum$q0.975)),
+        col = BO_samples_color, border = NA)
+lines(q0.5~x, data = BO_samples_g2_sum, col = "blue", lty = "dashed")
+dev.off()
+system("pdflatex -output-directory=./figures ./figures/compare_g2.tex")
+file.remove("./figures/compare_g2.tex")
+file.remove("./figures/compare_g2.aux")
+file.remove("./figures/compare_g2.log")
 

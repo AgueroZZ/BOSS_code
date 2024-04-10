@@ -74,22 +74,29 @@ for (i in 1:length(eval_num)) {
   end_time <- Sys.time()
   rel_runtime[i] <- as.numeric((end_time - begin_time), units = "mins")/1.961008
 }
-save(BO_result_original_list, file = "BO_data_to_smooth.rda")
-save(BO_result_list, file = "BO_result_list.rda")
+save(BO_result_original_list, file = "results/BO_data_to_smooth.rda")
+save(BO_result_list, file = "results/BO_result_list.rda")
 
 #### Plot the Rel-Runtime:
 plot(rel_runtime ~ eval_num, type = "o")
 
 
 #### Comparison:
-load(file = "exact_grid_result.rda")
-load(file = "exact_grid_result_smooth.rda")
-load(file = "mcmc_samps.rda")
+load(file = "results/exact_grid_result.rda")
+load(file = "results/exact_grid_result_smooth.rda")
+load(file = "results/mcmc_samps.rda")
 burnin <- 1000
 thinning <- 3
 mcmc_samps_selected <- mcmc_samps[-c(1:burnin)][seq(1, length(mcmc_samps[-c(1:burnin)]), by=thinning)]
+output_dir <- "figures/"
 
 for (i in 1:length(eval_num)) {
+  tex_file_name <- paste0("figures/change_point_BO_", eval_num[i], ".tex")
+  pdf_file_name <- paste0("figures/change_point_BO_", eval_num[i], ".pdf")
+  base_name <- paste0("change_point_BO_", eval_num[i])
+  # Use tikzDevice to save the figures as pdf
+  tikzDevice::tikz(file = paste0("figures/change_point_BO_", eval_num[i], ".tex"), 
+                   width = 5, height = 5, standAlone = TRUE)
   ggplot() +
     geom_histogram(aes(x = mcmc_samps_selected, y = ..density..), bins = 300, alpha = 0.8, fill = "skyblue") +
     geom_line(data = BO_result_list[[i]], aes(x = x, y = pos), color = "red", size = 1) +
@@ -101,7 +108,23 @@ for (i in 1:length(eval_num)) {
     lims(y = c(0,10)) +
     theme(text=element_text(size=10)) +
     theme_minimal() 
-    ggsave(filename = paste0("figures/change_point_BO_", eval_num[i], ".pdf"), width = 5, height = 5)
+    # ggsave(filename = paste0("figures/change_point_BO_", eval_num[i], ".pdf"), width = 5, height = 5)
+  dev.off()
+  if (file.exists(tex_file_name)) {
+    system(sprintf('pdflatex -output-directory=%s "%s"', output_dir, tex_file_name))
+    
+    # Check if the PDF was created
+    if (file.exists(pdf_file_name)) {
+      # Delete the .tex, .aux, and .log files to clean up
+      file.remove(tex_file_name)
+      file.remove(paste0(output_dir, base_name, ".aux"))
+      file.remove(paste0(output_dir, base_name, ".log"))
+    } else {
+      warning("PDF file was not created: ", pdf_file_name)
+    }
+  } else {
+    warning("TeX file was not created: ", tex_file_name)
+  }
 }
 
 
